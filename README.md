@@ -44,7 +44,7 @@ build/
 ├── x64/
 │   └── Release/
 │       └── KimiUsagePlugin.dll
-└── x86/
+└── Win32/
     └── Release/
         └── KimiUsagePlugin.dll
 ```
