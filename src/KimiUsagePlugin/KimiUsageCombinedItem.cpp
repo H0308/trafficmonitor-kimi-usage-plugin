@@ -66,9 +66,6 @@ int KimiUsageCombinedItem::GetItemWidthEx(void* hDC_ptr) const {
 
     bool show_5h = KimiConfig::Instance().show_5h_reset_time != 0;
     bool show_7d = KimiConfig::Instance().show_7d_reset_time != 0;
-    if (!show_5h && !show_7d) {
-        return 110;
-    }
 
     UsageInfo info_5h = KimiDataManager::Instance().GetUsageInfo(true);
     UsageInfo info_7d = KimiDataManager::Instance().GetUsageInfo(false);
