@@ -94,7 +94,7 @@ int KimiUsageCombinedItem::GetItemWidthEx(void* hDC_ptr) const {
     GetTextExtentPoint32W(hDC, pct_5h.c_str(), static_cast<int>(pct_5h.length()), &size_5h);
     GetTextExtentPoint32W(hDC, pct_7d.c_str(), static_cast<int>(pct_7d.length()), &size_7d);
 
-    if (last_draw_was_single_line_) {
+    if (last_draw_was_single_line_ || KimiConfig::Instance().horizontal_layout != 0) {
         // 横向排列：单行并排 "5H:...  7D:..."
         SIZE size_label_5h{}, size_label_7d{};
         GetTextExtentPoint32W(hDC, L"5H:", 3, &size_label_5h);
@@ -139,9 +139,9 @@ void KimiUsageCombinedItem::DoDraw(void* hDC_ptr, int x, int y, int w, int h, bo
 
     // 当高度不足以容纳两行进度条时，改为单行并排显示文本。
     // IsDoubleLineExclusive 返回 1 会让插件在垂直布局下尽量独占双行高度；
-    // 横向排列时高度受限，自动回落到单行数字。
+    // 用户开启强制横向排布时直接单行绘制；未开启时按可用高度自动回落到单行数字。
     constexpr int kDoubleLineMinHeight = 32;
-    last_draw_was_single_line_ = (h < kDoubleLineMinHeight);
+    last_draw_was_single_line_ = (KimiConfig::Instance().horizontal_layout != 0) || (h < kDoubleLineMinHeight);
     if (last_draw_was_single_line_) {
         DrawSingleLine(hDC, x, y, w, h, dark_mode);
     } else {

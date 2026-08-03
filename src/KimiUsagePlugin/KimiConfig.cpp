@@ -90,6 +90,10 @@ void KimiConfig::Load() {
     if (show_7d_reset_time != 0 && show_7d_reset_time != 1) {
         show_7d_reset_time = 0;
     }
+    horizontal_layout = ReadIniInt(ini_path_, kSectionGeneral, L"HorizontalLayout", 0);
+    if (horizontal_layout != 0 && horizontal_layout != 1) {
+        horizontal_layout = 0;
+    }
 }
 
 void KimiConfig::Save() const {
@@ -102,6 +106,7 @@ void KimiConfig::Save() const {
     WriteIniString(ini_path_, kSectionGeneral, L"LowUsageThreshold", std::to_wstring(low_usage_threshold));
     WriteIniString(ini_path_, kSectionGeneral, L"Show5HResetTime", std::to_wstring(show_5h_reset_time));
     WriteIniString(ini_path_, kSectionGeneral, L"Show7DResetTime", std::to_wstring(show_7d_reset_time));
+    WriteIniString(ini_path_, kSectionGeneral, L"HorizontalLayout", std::to_wstring(horizontal_layout));
 }
 
 } // namespace kimi_usage

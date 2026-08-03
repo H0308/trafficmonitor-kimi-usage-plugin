@@ -19,6 +19,7 @@ public:
     int low_usage_threshold = 80;
     int show_5h_reset_time = 0;
     int show_7d_reset_time = 0;
+    int horizontal_layout = 0;
 
 private:
     KimiConfig() = default;
