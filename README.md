@@ -1,4 +1,4 @@
-# TrafficMonitor Kimi Code 限额插件
+# TrafficMonitor显示Kimi Coding Plan限额插件
 
 在 Windows 任务栏 [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor) 中显示 Kimi Code 的 **5 小时滚动窗口** 和 **7 天周期** 用量限额。
 
