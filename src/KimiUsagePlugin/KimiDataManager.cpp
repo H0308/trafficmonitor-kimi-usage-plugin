@@ -9,8 +9,12 @@
 #include <vector>
 #include <exception>
 #include <string>
+#include <cstring>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
+#include <cctype>
+#include <ctime>
 
 namespace kimi_usage {
 
@@ -34,6 +38,155 @@ std::wstring FormatSystemTime(const SYSTEMTIME& st) {
     swprintf_s(buffer, L"%.4d-%.2d-%.2d %.2d:%.2d:%.2d",
                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     return std::wstring(buffer);
+}
+
+// 解析 ISO 8601 时间字符串（如 2026-08-03T12:00:00.716839300Z）为 UTC 时间点。
+// 支持小数秒、时区偏移以及数字 Unix 时间戳（秒）回退。
+bool ParseIso8601Utc(const std::string& str, std::chrono::system_clock::time_point* out) {
+    if (out == nullptr) {
+        return false;
+    }
+
+    // 处理纯数字 Unix 时间戳（秒）
+    bool all_digits = !str.empty() &&
+        std::all_of(str.begin(), str.end(), [](unsigned char c) { return std::isdigit(c); });
+    if (all_digits) {
+        try {
+            long long sec = std::stoll(str);
+            *out = std::chrono::system_clock::from_time_t(static_cast<time_t>(sec));
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+    int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+    long long fraction_ns = 0;
+    int tz_hour = 0, tz_minute = 0;
+    bool has_tz = false;
+    bool tz_negative = false;
+
+    const char* s = str.c_str();
+
+    // 解析日期部分
+    if (sscanf_s(s, "%d-%d-%d", &year, &month, &day) != 3) {
+        return false;
+    }
+
+    // 解析时间部分，允许 'T' 或空格作为分隔符
+    const char* t_sep = std::strchr(s, 'T');
+    if (t_sep == nullptr) {
+        t_sep = std::strchr(s, ' ');
+    }
+    if (t_sep == nullptr || sscanf_s(t_sep + 1, "%d:%d:%d", &hour, &minute, &second) != 3) {
+        return false;
+    }
+
+    // 跳到时间部分，解析小数秒和时区
+    const char* p = t_sep + 1;
+
+    while (*p != '\0' && *p != '+' && *p != '-' && *p != 'Z' && *p != 'z') {
+        if (*p == '.') {
+            ++p;
+            int digits = 0;
+            long long frac = 0;
+            while (std::isdigit(static_cast<unsigned char>(*p)) && digits < 9) {
+                frac = frac * 10 + (*p - '0');
+                ++digits;
+                ++p;
+            }
+            while (digits < 9) {
+                frac *= 10;
+                ++digits;
+            }
+            fraction_ns = frac;
+        } else {
+            ++p;
+        }
+    }
+
+    if (*p == 'Z' || *p == 'z') {
+        has_tz = true;
+    } else if (*p == '+' || *p == '-') {
+        has_tz = true;
+        tz_negative = (*p == '-');
+        if (sscanf_s(p + 1, "%d:%d", &tz_hour, &tz_minute) != 2) {
+            if (sscanf_s(p + 1, "%2d%2d", &tz_hour, &tz_minute) != 2) {
+                return false;
+            }
+        }
+    }
+
+    std::tm tm = {};
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_min = minute;
+    tm.tm_sec = second;
+    tm.tm_isdst = -1;
+
+    time_t t = _mkgmtime(&tm);
+    if (t == -1) {
+        return false;
+    }
+
+    auto tp = std::chrono::system_clock::from_time_t(t);
+    tp += std::chrono::duration_cast<std::chrono::system_clock::duration>(
+        std::chrono::nanoseconds(fraction_ns));
+
+    if (has_tz) {
+        auto offset = std::chrono::hours(tz_hour) + std::chrono::minutes(tz_minute);
+        if (tz_negative) {
+            tp += offset;
+        } else {
+            tp -= offset;
+        }
+    }
+
+    *out = tp;
+    return true;
+}
+
+std::wstring FormatResetTime(const std::chrono::system_clock::time_point& tp) {
+    time_t tt = std::chrono::system_clock::to_time_t(tp);
+    tm local_time{};
+    localtime_s(&local_time, &tt);
+
+    SYSTEMTIME st{};
+    st.wYear = static_cast<WORD>(local_time.tm_year + 1900);
+    st.wMonth = static_cast<WORD>(local_time.tm_mon + 1);
+    st.wDay = static_cast<WORD>(local_time.tm_mday);
+    st.wHour = static_cast<WORD>(local_time.tm_hour);
+    st.wMinute = static_cast<WORD>(local_time.tm_min);
+    st.wSecond = static_cast<WORD>(local_time.tm_sec);
+
+    return FormatSystemTime(st);
+}
+
+std::wstring FormatCountdown(const std::chrono::system_clock::time_point& reset_tp) {
+    auto now = std::chrono::system_clock::now();
+    if (reset_tp <= now) {
+        return L"已重置";
+    }
+
+    auto diff = reset_tp - now;
+    using days = std::chrono::duration<long long, std::ratio<86400>>;
+    auto d = std::chrono::duration_cast<days>(diff);
+    diff -= d;
+    auto h = std::chrono::duration_cast<std::chrono::hours>(diff);
+    diff -= h;
+    auto m = std::chrono::duration_cast<std::chrono::minutes>(diff);
+
+    std::wstring result = L"还剩 ";
+    if (d.count() > 0) {
+        result += std::to_wstring(d.count()) + L"天";
+    }
+    if (h.count() > 0 || d.count() > 0) {
+        result += std::to_wstring(h.count()) + L"小时";
+    }
+    result += std::to_wstring(m.count()) + L"分钟";
+    return result;
 }
 
 } // namespace
@@ -133,7 +286,12 @@ std::wstring KimiDataManager::GetTooltipText() const {
             result += L"已用: " + std::to_wstring(data.used) + L" / " + std::to_wstring(data.limit) + L"\n";
             result += L"比例: " + std::to_wstring(CalculatePercentage(data.used, data.limit)) + L"%\n";
             if (!data.reset_time.empty()) {
-                result += L"重置: " + data.reset_time + L"\n";
+                if (data.reset_time_point != std::chrono::system_clock::time_point()) {
+                    result += L"重置: " + FormatResetTime(data.reset_time_point) + L"\n";
+                    result += L"剩余: " + FormatCountdown(data.reset_time_point) + L"\n";
+                } else {
+                    result += L"重置: " + data.reset_time + L"\n";
+                }
             }
         }
         result += L"更新: " + FormatTimePoint(data.update_time) + L"\n\n";
@@ -221,6 +379,16 @@ void KimiDataManager::ParseResponse(const std::string& body) {
     try {
         auto root = nlohmann::json::parse(body);
 
+        auto parse_reset_time = [](const nlohmann::json& obj, UsageData& data) {
+            data.reset_time.clear();
+            data.reset_time_point = std::chrono::system_clock::time_point();
+            if (obj.contains("resetTime") && obj["resetTime"].is_string()) {
+                std::string utf8 = obj["resetTime"].get<std::string>();
+                data.reset_time = Utf8ToWide(utf8);
+                ParseIso8601Utc(utf8, &data.reset_time_point);
+            }
+        };
+
         // 7 天限额：字段为字符串数字
         if (root.contains("usage") && root["usage"].is_object()) {
             const auto& usage = root["usage"];
@@ -228,11 +396,7 @@ void KimiDataManager::ParseResponse(const std::string& body) {
                 usage.contains("limit") && usage["limit"].is_string()) {
                 seven_day_.used = std::stoll(usage["used"].get<std::string>());
                 seven_day_.limit = std::stoll(usage["limit"].get<std::string>());
-                if (usage.contains("resetTime") && usage["resetTime"].is_string()) {
-                    seven_day_.reset_time = Utf8ToWide(usage["resetTime"].get<std::string>());
-                } else {
-                    seven_day_.reset_time.clear();
-                }
+                parse_reset_time(usage, seven_day_);
                 seven_day_.valid = (seven_day_.limit > 0);
             } else {
                 seven_day_.valid = false;
@@ -262,11 +426,7 @@ void KimiDataManager::ParseResponse(const std::string& body) {
                             long long remaining = std::stoll(detail["remaining"].get<std::string>());
                             five_hour_.limit = limit;
                             five_hour_.used = limit - remaining;
-                            if (detail.contains("resetTime") && detail["resetTime"].is_string()) {
-                                five_hour_.reset_time = Utf8ToWide(detail["resetTime"].get<std::string>());
-                            } else {
-                                five_hour_.reset_time.clear();
-                            }
+                            parse_reset_time(detail, five_hour_);
                             five_hour_.valid = (five_hour_.limit > 0);
                         }
                     }

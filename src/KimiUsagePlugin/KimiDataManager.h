@@ -13,7 +13,8 @@ struct UsageData {
     bool valid = false;
     long long used = -1;
     long long limit = -1;
-    std::wstring reset_time;
+    std::wstring reset_time;                                      // 原始字符串，解析失败时用于回退显示
+    std::chrono::system_clock::time_point reset_time_point;       // 解析后的 UTC 时间点
     std::wstring error;
     std::chrono::steady_clock::time_point update_time;
 };
