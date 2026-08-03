@@ -7,3 +7,5 @@
 #define IDC_STATIC_API_KEY          1004
 #define IDC_STATIC_INTERVAL         1005
 #define IDC_STATIC_THRESHOLD        1006
+#define IDC_CHECK_SHOW_5H_RESET     1007
+#define IDC_CHECK_SHOW_7D_RESET     1008

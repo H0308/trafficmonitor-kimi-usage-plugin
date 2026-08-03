@@ -41,6 +41,7 @@ public:
     UsageInfo GetUsageInfo(bool is_5h) const;
     std::wstring GetValueText(bool is_5h) const;
     std::wstring GetTooltipText() const;
+    std::wstring GetResetCountdownText(bool is_5h) const;
 
 private:
     KimiDataManager() = default;

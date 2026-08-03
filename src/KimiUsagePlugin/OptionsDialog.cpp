@@ -52,6 +52,8 @@ void OptionsDialog::OnInitDialog(HWND hDlg) {
     SetDlgItemText(hDlg, IDC_EDIT_API_KEY, config.api_key.c_str());
     SetDlgItemInt(hDlg, IDC_EDIT_INTERVAL, config.refresh_interval_seconds, FALSE);
     SetDlgItemInt(hDlg, IDC_EDIT_THRESHOLD, config.low_usage_threshold, FALSE);
+    CheckDlgButton(hDlg, IDC_CHECK_SHOW_5H_RESET, config.show_5h_reset_time ? BST_CHECKED : BST_UNCHECKED);
+    CheckDlgButton(hDlg, IDC_CHECK_SHOW_7D_RESET, config.show_7d_reset_time ? BST_CHECKED : BST_UNCHECKED);
 }
 
 bool OptionsDialog::OnOK(HWND hDlg) {
@@ -72,6 +74,9 @@ bool OptionsDialog::OnOK(HWND hDlg) {
     if (translated && threshold >= 0 && threshold <= 100) {
         config.low_usage_threshold = threshold;
     }
+
+    config.show_5h_reset_time = (IsDlgButtonChecked(hDlg, IDC_CHECK_SHOW_5H_RESET) == BST_CHECKED) ? 1 : 0;
+    config.show_7d_reset_time = (IsDlgButtonChecked(hDlg, IDC_CHECK_SHOW_7D_RESET) == BST_CHECKED) ? 1 : 0;
 
     config.Save();
     KimiDataManager::Instance().Restart();

@@ -2,6 +2,7 @@
 
 #include <string>
 #include "PluginInterface.h"
+#include "KimiConfig.h"
 
 namespace kimi_usage {
 
@@ -16,7 +17,8 @@ public:
     virtual const wchar_t* GetItemValueSampleText() const override;
 
     virtual bool IsCustomDraw() const override { return true; }
-    virtual int GetItemWidth() const override { return 110; }
+    virtual int GetItemWidth() const override { return 0; }
+    virtual int GetItemWidthEx(void* hDC) const override;
     virtual int IsDoubleLineExclusive() const override { return 1; }
     virtual void DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode) override;
     virtual bool DrawItemEx(IPluginDrawer* pDrawer, int x, int y, int w, int h, bool dark_mode) override;
@@ -27,6 +29,7 @@ private:
     void DrawSingleLine(void* hDC, int x, int y, int w, int h, bool dark_mode);
 
     mutable std::wstring value_cache_;
+    mutable bool last_draw_was_single_line_ = false;
 };
 
 } // namespace kimi_usage

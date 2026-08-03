@@ -189,6 +189,32 @@ std::wstring FormatCountdown(const std::chrono::system_clock::time_point& reset_
     return result;
 }
 
+// 紧凑倒计时格式，例如 7d1h23m、2h15m、30m。
+std::wstring FormatResetCountdownCompact(const std::chrono::system_clock::time_point& reset_tp) {
+    auto now = std::chrono::system_clock::now();
+    if (reset_tp <= now) {
+        return L"0m";
+    }
+
+    auto diff = reset_tp - now;
+    using days = std::chrono::duration<long long, std::ratio<86400>>;
+    auto d = std::chrono::duration_cast<days>(diff);
+    diff -= d;
+    auto h = std::chrono::duration_cast<std::chrono::hours>(diff);
+    diff -= h;
+    auto m = std::chrono::duration_cast<std::chrono::minutes>(diff);
+
+    std::wstring result;
+    if (d.count() > 0) {
+        result += std::to_wstring(d.count()) + L"d";
+    }
+    if (h.count() > 0 || d.count() > 0) {
+        result += std::to_wstring(h.count()) + L"h";
+    }
+    result += std::to_wstring(m.count()) + L"m";
+    return result;
+}
+
 } // namespace
 
 KimiDataManager& KimiDataManager::Instance() {
@@ -308,6 +334,15 @@ std::wstring KimiDataManager::GetTooltipText() const {
     }
 
     return result;
+}
+
+std::wstring KimiDataManager::GetResetCountdownText(bool is_5h) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const UsageData& data = is_5h ? five_hour_ : seven_day_;
+    if (data.reset_time_point == std::chrono::system_clock::time_point()) {
+        return std::wstring();
+    }
+    return FormatResetCountdownCompact(data.reset_time_point);
 }
 
 void KimiDataManager::WorkerLoop() {

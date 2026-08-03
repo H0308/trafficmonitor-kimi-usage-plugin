@@ -82,6 +82,14 @@ void KimiConfig::Load() {
     if (low_usage_threshold < 0 || low_usage_threshold > 100) {
         low_usage_threshold = 80;
     }
+    show_5h_reset_time = ReadIniInt(ini_path_, kSectionGeneral, L"Show5HResetTime", 0);
+    if (show_5h_reset_time != 0 && show_5h_reset_time != 1) {
+        show_5h_reset_time = 0;
+    }
+    show_7d_reset_time = ReadIniInt(ini_path_, kSectionGeneral, L"Show7DResetTime", 0);
+    if (show_7d_reset_time != 0 && show_7d_reset_time != 1) {
+        show_7d_reset_time = 0;
+    }
 }
 
 void KimiConfig::Save() const {
@@ -92,6 +100,8 @@ void KimiConfig::Save() const {
     WriteIniString(ini_path_, kSectionGeneral, L"APIKey", api_key);
     WriteIniString(ini_path_, kSectionGeneral, L"RefreshIntervalSeconds", std::to_wstring(refresh_interval_seconds));
     WriteIniString(ini_path_, kSectionGeneral, L"LowUsageThreshold", std::to_wstring(low_usage_threshold));
+    WriteIniString(ini_path_, kSectionGeneral, L"Show5HResetTime", std::to_wstring(show_5h_reset_time));
+    WriteIniString(ini_path_, kSectionGeneral, L"Show7DResetTime", std::to_wstring(show_7d_reset_time));
 }
 
 } // namespace kimi_usage

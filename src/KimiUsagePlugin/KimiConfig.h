@@ -17,6 +17,8 @@ public:
     std::wstring api_key;
     int refresh_interval_seconds = 60;
     int low_usage_threshold = 80;
+    int show_5h_reset_time = 0;
+    int show_7d_reset_time = 0;
 
 private:
     KimiConfig() = default;
