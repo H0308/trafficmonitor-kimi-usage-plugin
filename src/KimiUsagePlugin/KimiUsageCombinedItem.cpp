@@ -80,9 +80,58 @@ void KimiUsageCombinedItem::DoDraw(void* hDC_ptr, int x, int y, int w, int h, bo
         return;
     }
 
-    int row_h = h / 2;
-    DrawRow(hDC, x, y, w, row_h, dark_mode, true);
-    DrawRow(hDC, x, y + row_h, w, row_h, dark_mode, false);
+    // 当高度不足以容纳两行进度条时，改为单行并排显示文本。
+    // IsDoubleLineExclusive 返回 1 会让插件在垂直布局下尽量独占双行高度；
+    // 横向排列时高度受限，自动回落到单行数字。
+    constexpr int kDoubleLineMinHeight = 32;
+    if (h < kDoubleLineMinHeight) {
+        DrawSingleLine(hDC, x, y, w, h, dark_mode);
+    } else {
+        int row_h = h / 2;
+        DrawRow(hDC, x, y, w, row_h, dark_mode, true);
+        DrawRow(hDC, x, y + row_h, w, row_h, dark_mode, false);
+    }
+}
+
+void KimiUsageCombinedItem::DrawSingleLine(void* hDC_ptr, int x, int y, int w, int h, bool dark_mode) {
+    HDC hDC = reinterpret_cast<HDC>(hDC_ptr);
+    if (!hDC) {
+        return;
+    }
+
+    UsageInfo info_5h = KimiDataManager::Instance().GetUsageInfo(true);
+    UsageInfo info_7d = KimiDataManager::Instance().GetUsageInfo(false);
+
+    COLORREF text_color = dark_mode ? RGB(255, 255, 255) : RGB(0, 0, 0);
+
+    auto make_text = [](const UsageInfo& info, const wchar_t* prefix) -> std::wstring {
+        std::wstring result = prefix;
+        if (!info.error.empty()) {
+            result += info.error;
+        } else if (!info.valid) {
+            result += L"N/A";
+        } else {
+            result += std::to_wstring(info.percentage) + L"%";
+        }
+        return result;
+    };
+
+    std::wstring text_5h = make_text(info_5h, L"5H:");
+    std::wstring text_7d = make_text(info_7d, L"7D:");
+
+    int old_bk_mode = SetBkMode(hDC, TRANSPARENT);
+    COLORREF old_text_color = SetTextColor(hDC, text_color);
+
+    int half_w = w / 2;
+
+    RECT rc_5h{ x, y, x + half_w, y + h };
+    DrawTextW(hDC, text_5h.c_str(), -1, &rc_5h, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+
+    RECT rc_7d{ x + half_w, y, x + w, y + h };
+    DrawTextW(hDC, text_7d.c_str(), -1, &rc_7d, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+
+    SetBkMode(hDC, old_bk_mode);
+    SetTextColor(hDC, old_text_color);
 }
 
 void KimiUsageCombinedItem::DrawRow(void* hDC_ptr, int x, int y, int w, int h, bool dark_mode, bool is_5h) {
