@@ -425,12 +425,20 @@ void KimiDataManager::ParseResponse(const std::string& body) {
         };
 
         // 7 天限额：字段为字符串数字
+        // 服务端有时只返回 limit + remaining，没有 used，此时用 limit - remaining 推导。
         if (root.contains("usage") && root["usage"].is_object()) {
             const auto& usage = root["usage"];
-            if (usage.contains("used") && usage["used"].is_string() &&
-                usage.contains("limit") && usage["limit"].is_string()) {
-                seven_day_.used = std::stoll(usage["used"].get<std::string>());
-                seven_day_.limit = std::stoll(usage["limit"].get<std::string>());
+            if (usage.contains("limit") && usage["limit"].is_string()) {
+                long long limit = std::stoll(usage["limit"].get<std::string>());
+                long long used = 0;
+                if (usage.contains("used") && usage["used"].is_string()) {
+                    used = std::stoll(usage["used"].get<std::string>());
+                } else if (usage.contains("remaining") && usage["remaining"].is_string()) {
+                    long long remaining = std::stoll(usage["remaining"].get<std::string>());
+                    used = limit - remaining;
+                }
+                seven_day_.limit = limit;
+                seven_day_.used = used;
                 parse_reset_time(usage, seven_day_);
                 seven_day_.valid = (seven_day_.limit > 0);
             } else {
